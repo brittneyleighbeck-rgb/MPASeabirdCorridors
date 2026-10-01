@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PNG Seabird Tracking & MPA Design Challenge</title>
+<style>
+:root{
+  --ink:#17323a;--muted:#60747b;--ocean:#126b78;--ocean2:#5bb8c5;
+  --gold:#c58d25;--reef:#2d9b8e;--pelagic:#4c9b61;--route:#80658e;
+  --red:#c55c55;--border:#d5e1e2;--bg:#eef5f5;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+#app{max-width:1180px;margin:auto;padding:18px}
+h1{margin:0;font-size:27px;line-height:1.15}
+h2{font-size:16px;margin:0}
+.subtitle{color:var(--muted);font-size:14px;line-height:1.45;margin-top:4px}
+.top{display:flex;justify-content:space-between;gap:15px;align-items:flex-start;margin-bottom:13px}
+.year{background:#17323a;color:white;border-radius:10px;padding:9px 13px;font-weight:800;white-space:nowrap}
+.intro{background:#fff;border:1px solid var(--border);border-left:5px solid var(--ocean);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.55}
+.grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(310px,.8fr);gap:14px}
+.panel{background:#f8fbfa;border:1px solid var(--border);border-radius:15px;padding:14px}
+.card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:11px;margin-bottom:9px}
+.small{font-size:11px;color:var(--muted);line-height:1.45}
+.tiny{font-size:10px;color:var(--muted);line-height:1.4}
+button,select,input{font:inherit}
+button{border:1px solid var(--border);background:white;color:var(--ink);border-radius:8px;padding:9px 11px;cursor:pointer;min-height:39px}
+button:hover{background:#f1f6f6}
+button.primary{background:var(--ocean);color:#fff;border-color:var(--ocean)}
+select{width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:white;color:var(--ink);margin-top:6px}
+input[type=range]{width:100%;accent-color:var(--ocean)}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:3px solid #b9dfe2;outline-offset:2px}
+.controls{display:flex;gap:6px;flex-wrap:wrap}
+svg{width:100%;display:block;border-radius:11px;border:1px solid var(--border);background:#8dd3df}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin:7px 2px 0}
+.station{cursor:pointer}
+.station:hover circle:first-child{fill:#f2fbfb}
+.station:focus{outline:none}
+.station:focus circle:first-child{stroke:#17323a;stroke-width:3}
+.site-details{background:#fff;border:1px solid var(--border);border-left:5px solid var(--ocean);border-radius:10px;padding:12px 14px;margin-top:10px;display:none}
+.site-details.show{display:block}
+.site-details h3{margin:0 0 4px;font-size:14px}
+.site-details .site-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
+.site-metric{background:#f3f8f7;border-radius:8px;padding:7px}
+.site-metric b{display:block;font-size:11px}
+.site-metric span{font-size:11px;color:var(--muted)}
+@media(max-width:700px){.site-details .site-grid{grid-template-columns:1fr}}
+.legend span{font-size:10px;color:var(--muted);display:flex;align-items:center;gap:4px}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.speciesgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:9px}
+.species{padding:9px;border-radius:9px;background:#fff;border:1px solid var(--border);font-size:10px}
+.species strong{font-size:18px;display:block;margin-top:2px}
+.bar{height:7px;background:#e7eeee;border-radius:6px;overflow:hidden;margin-top:5px}
+.bar i{display:block;height:100%;transition:width .25s}
+.gold{background:#c58d25}.red{background:#c55c55}.blue{background:#297b91}.purple{background:#80658e}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:9px}
+.kpi{background:#fff;border:1px solid var(--border);border-radius:9px;padding:8px;font-size:10px}
+.kpi b{display:block;font-size:17px;margin-top:2px}
+.status{padding:9px;border-radius:8px;background:#f0f5f5;font-size:11px;line-height:1.45;margin-top:8px}
+.good{background:#e6f3e9}.warn{background:#fbefe8}
+.option{display:flex;gap:8px;border:1px solid var(--border);padding:8px;border-radius:8px;margin-top:6px;cursor:pointer}
+.option:hover{border-color:#a6c4c6}
+.option:has(input:checked){background:#e7f4f2;border-color:#8bbdb9}
+.option input{width:17px;height:17px;accent-color:var(--ocean);margin-top:1px}
+.message{border-left:4px solid var(--gold);padding-left:9px;font-size:11px;line-height:1.5;margin-top:8px}
+.footer{color:var(--muted);font-size:10px;line-height:1.5;margin-top:12px}
+.data-pill{font-size:10px;font-weight:800;letter-spacing:.2px}
+.map-note{font-size:11px;font-weight:700}
+.station{filter:drop-shadow(0 1px 2px rgba(0,0,0,.18))}
+@keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+.pulse{animation:pulse 1.8s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.pulse{animation:none}}
+@media(max-width:800px){.grid{grid-template-columns:1fr}.speciesgrid{grid-template-columns:repeat(2,1fr)}.kpis{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="top">
+    <div>
+      <h1>PNG Seabird Tracking &amp; MPA Design Challenge</h1>
+      <div class="subtitle">Follow the birds. Find the ocean hotspots. Protect the connections.</div>
+    </div>
+    <div class="year" id="year">2024 Baseline</div>
+  </div>
+
+  <div class="intro">
+    <b>Research challenge:</b> Seabirds connect island breeding colonies to offshore ecosystems. In this simulation, different species sample different distances from shore, while tuna and dolphins can concentrate prey near the surface. Use simulated tracking data to discover productive areas, identify ecological connections, and test how those discoveries could change marine spatial planning in Milne Bay.
+    <div class="small" style="margin-top:5px"><b>Important:</b> The distances shown are illustrative reference ranges based on the scenario, not measurements of PNG populations. The model is designed to help students reason about what tracking data could reveal.</div>
+  </div>
+
+  <div class="grid">
+    <section class="panel">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:start">
+        <div>
+          <h2>Milne Bay conceptual seascape</h2>
+          <div class="small">Island colonies → reefs → shelf waters → offshore pelagic hotspots</div>
+        </div>
+        <div class="tiny">2024 baseline → 2027 tracking → MPA planning</div>
+      </div>
+
+      <svg viewBox="0 0 820 470" role="img" aria-label="Conceptual Milne Bay map showing island breeding colonies, coral reefs, shelf waters, offshore tuna and dolphin hotspots, and seabird tracking routes">
+        <defs>
+          <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#a7e1e7"/>
+            <stop offset=".48" stop-color="#4eb6c5"/>
+            <stop offset="1" stop-color="#07556a"/>
+          </linearGradient>
+          <pattern id="reef" width="30" height="24" patternUnits="userSpaceOnUse">
+            <path d="M3 20Q8 6 14 19Q20 4 27 19" fill="none" stroke="#c9e7b5" stroke-width="2" opacity=".65"/>
+          </pattern>
+        </defs>
+        <rect width="820" height="470" rx="11" fill="url(#sea)"/>
+        <path d="M0 325 C120 295 220 340 335 314 S610 300 820 330 L820 470 L0 470Z" fill="#07566a" opacity=".7"/>
+        <path d="M0 330 C110 305 215 345 330 320 S620 310 820 335 L820 470 L0 470Z" fill="url(#reef)" opacity=".65"/>
+
+        <!-- distance bands -->
+        <path d="M190 205 C300 150 470 150 610 205" fill="none" stroke="#ffffff" stroke-width="2" stroke-dasharray="5 7" opacity=".65"/>
+        <path d="M190 205 C350 90 585 90 760 180" fill="none" stroke="#ffffff" stroke-width="2" stroke-dasharray="5 7" opacity=".48"/>
+        <text x="585" y="113" font-size="11" fill="#245f69">illustrative offshore range bands</text>
+
+        <!-- island colony -->
+        <ellipse id="colonyZone" cx="135" cy="177" rx="110" ry="83" fill="#c58d25" fill-opacity=".14" stroke="#c58d25" stroke-width="4" stroke-dasharray="8 6"/>
+        <path d="M22 246Q42 166 86 133Q112 101 142 133Q180 115 238 236Z" fill="#6e825b"/>
+        <path d="M53 224Q94 151 130 137Q168 151 214 228Z" fill="#91a86c"/>
+        <path d="M83 192Q105 159 130 168Q151 151 178 194L160 216L96 216Z" fill="#c1b68a"/>
+
+        <!-- reef/lagoon -->
+        <ellipse id="reefZone" cx="340" cy="315" rx="145" ry="78" fill="#2d9b8e" fill-opacity=".14" stroke="#2d9b8e" stroke-width="4" stroke-dasharray="8 6"/>
+
+        <!-- pelagic productivity -->
+        <ellipse id="pelagicZone" cx="655" cy="207" rx="120" ry="92" fill="#4c9b61" fill-opacity=".14" stroke="#4c9b61" stroke-width="4" stroke-dasharray="8 6"/>
+
+        <!-- tracking corridors -->
+        <g id="dataStory"></g>
+        <g id="surveyData"></g>
+        <g id="tracks"></g>
+        <g id="prey"></g>
+        <g id="birds"></g>
+        <g id="predators"></g>
+
+        <!-- labels outside zones -->
+        <g>
+          <line x1="92" y1="91" x2="108" y2="76" stroke="#c58d25" stroke-width="3"/>
+          <circle cx="108" cy="76" r="5" fill="#c58d25"/>
+          <rect x="10" y="34" width="205" height="42" rx="11" fill="#fff" fill-opacity=".95" stroke="#c58d25" stroke-width="2"/>
+          <text x="112" y="61" text-anchor="middle" font-size="17" font-weight="800" fill="#956915">Breeding Islands</text>
+        </g>
+        <g>
+          <line x1="340" y1="394" x2="340" y2="418" stroke="#2d9b8e" stroke-width="3"/>
+          <circle cx="340" cy="418" r="5" fill="#2d9b8e"/>
+          <rect x="226" y="420" width="228" height="37" rx="10" fill="#fff" fill-opacity=".95" stroke="#2d9b8e" stroke-width="2"/>
+          <text x="340" y="444" text-anchor="middle" font-size="16" font-weight="800" fill="#176f6b">Coral Reef &amp; Lagoon</text>
+        </g>
+        <g>
+          <line x1="735" y1="111" x2="750" y2="97" stroke="#4c9b61" stroke-width="3"/>
+          <circle cx="750" cy="97" r="5" fill="#4c9b61"/>
+          <rect x="575" y="56" width="175" height="42" rx="11" fill="#fff" fill-opacity=".95" stroke="#4c9b61" stroke-width="2"/>
+          <text x="662" y="83" text-anchor="middle" font-size="16" font-weight="800" fill="#397047">Pelagic Hotspot</text>
+        </g>
+
+        <text x="290" y="25" font-size="12" fill="#245f69">Milne Bay concept — not geographic data</text>
+      </svg>
+
+      <div class="legend">
+        <span><i class="dot" style="background:#c58d25"></i> breeding colony</span>
+        <span><i class="dot" style="background:#2d9b8e"></i> reef / lagoon</span>
+        <span><i class="dot" style="background:#4c9b61"></i> productivity hotspot</span>
+        <span><i class="dot" style="background:#80658e"></i> tracking route</span>
+        <span><i class="dot" style="background:#17323a"></i> tuna / dolphin aggregation</span>
+      </div>
+
+      <div class="site-details" id="siteDetails" aria-live="polite">
+        <h3 id="siteTitle">Survey station evidence</h3>
+        <div class="small" id="siteSummary">Click a survey station on the map to inspect the observations collected there.</div>
+        <div class="site-grid" id="siteGrid"></div>
+        <div class="small" id="siteConnection" style="margin-top:9px"></div>
+      </div>
+
+      <div class="speciesgrid">
+        <div class="species"><b>Wedge-tailed Shearwater</b><br><i>Ardenna pacifica</i><strong id="wedge">100</strong><div class="bar"><i id="wedgeBar" class="gold"></i></div><div class="tiny">illustrative range: up to 750 km</div></div>
+        <div class="species"><b>Red-footed Booby</b><br><i>Sula sula</i><strong id="redfoot">100</strong><div class="bar"><i id="redBar" class="red"></i></div><div class="tiny">illustrative range: ~250 km</div></div>
+        <div class="species"><b>Masked Booby</b><br><i>Sula dactylatra</i><strong id="masked">100</strong><div class="bar"><i id="maskedBar" class="blue"></i></div><div class="tiny">illustrative range: ~400 km</div></div>
+        <div class="species"><b>Black Noddy</b><br><i>Anous minutus</i><strong id="noddy">100</strong><div class="bar"><i id="noddyBar" class="purple"></i></div><div class="tiny">illustrative range: ~100 km</div></div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi">Hotspots detected<b id="hotspots">0</b></div>
+        <div class="kpi">Tracking coverage<b id="coverage">0%</b></div>
+        <div class="kpi">Connectivity<b id="connectivity">Low</b></div>
+        <div class="kpi">Planning confidence<b id="confidence">Low</b></div>
+      </div>
+
+      <div class="status" id="status">Begin with the 2024 baseline. Deploy tracking to reveal where seabirds actually spend time offshore.</div>
+      <div class="message" id="message">Think like a marine spatial planner: a coral reef may be stationary and visible, but the birds can tell you about dynamic pelagic habitat that moves with prey and predator activity.</div>
+    </section>
+
+    <aside class="panel">
+      <div class="card">
+        <strong>1. Start with baseline data</strong>
+        <div class="small" style="margin-top:5px">Start with what we know from baseline reef and pelagic observations. Then add two complementary evidence streams: <b>where the birds go</b> and <b>what the ocean is doing there</b>.</div>
+        <div class="controls" style="margin-top:8px">
+          <button class="primary" id="track">Deploy seabird tags → map movement</button>
+          <button id="survey">Run ocean surveys → map conditions</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <strong>2. Choose the species you track</strong>
+        <label class="option"><input class="birdChoice" type="checkbox" value="wedge" checked><span><b>Wedge-tailed Shearwater</b><br><span class="small">Long-range pelagic indicator; potentially reveals far-off hotspots.</span></span></label>
+        <label class="option"><input class="birdChoice" type="checkbox" value="redfoot"><span><b>Red-footed Booby</b><br><span class="small">Offshore forager that can connect islands to productive waters.</span></span></label>
+        <label class="option"><input class="birdChoice" type="checkbox" value="masked"><span><b>Masked Booby</b><br><span class="small">Helps sample offshore waters beyond nearshore reefs.</span></span></label>
+        <label class="option"><input class="birdChoice" type="checkbox" value="noddy"><span><b>Black Noddy</b><br><span class="small">Shorter-range indicator for waters closer to breeding islands.</span></span></label>
+      </div>
+
+      <div class="card">
+        <strong>3. Simulate the tuna-bird relationship</strong>
+        <div class="small" style="margin-top:5px">Tuna and dolphins can drive prey toward the surface, creating feeding opportunities for seabirds. More intact predator communities can therefore make some surface-feeding hotspots more useful to birds.</div>
+        <div class="small" style="margin-top:8px">Tuna / dolphin abundance</div>
+        <input id="tuna" type="range" min="20" max="100" value="75">
+        <div class="tiny"><b id="tunaVal">75%</b></div>
+      </div>
+
+      <div class="card">
+        <strong>4. Add pressures</strong>
+        <div class="small" style="margin-top:6px">Fishing pressure</div>
+        <input id="fishing" type="range" min="0" max="80" value="35">
+        <div class="tiny"><b id="fishVal">35%</b></div>
+
+        <div class="small" style="margin-top:6px">Bycatch risk</div>
+        <input id="bycatch" type="range" min="0" max="60" value="15">
+        <div class="tiny"><b id="bycatchVal">15%</b></div>
+
+        <div class="small" style="margin-top:6px">Reef / coastal stress</div>
+        <input id="reefStress" type="range" min="0" max="70" value="20">
+        <div class="tiny"><b id="reefVal">20%</b></div>
+      </div>
+
+      <div class="card">
+        <strong>5. Design the MPA network</strong>
+        <div class="small" style="margin-top:5px">Protect up to <b>4 of 7</b> units. The goal is not simply area—it is ecological connectivity.</div>
+        <label class="option"><input class="mpa" type="checkbox" value="colony" checked><span><b>Breeding colonies</b><br><span class="small">Protect nesting and roosting islands.</span></span></label>
+        <label class="option"><input class="mpa" type="checkbox" value="reef"><span><b>Reefs &amp; lagoons</b><br><span class="small">Protect nearshore feeding and nursery habitat.</span></span></label>
+        <label class="option"><input class="mpa" type="checkbox" value="hotspot"><span><b>Pelagic productivity hotspots</b><br><span class="small">Protect dynamic offshore feeding areas identified by tracking.</span></span></label>
+        <label class="option"><input class="mpa" type="checkbox" value="corridor"><span><b>Foraging corridors</b><br><span class="small">Protect repeated movement routes between land and sea.</span></span></label>
+        <label class="option"><input class="mpa" type="checkbox" value="predator"><span><b>Tuna / dolphin habitat</b><br><span class="small">Protect predator–prey interactions that can facilitate seabird feeding.</span></span></label>
+        <label class="option"><input class="mpa" type="checkbox" value="community"><span><b>Community-managed waters</b><br><span class="small">Strengthen local stewardship and compliance.</span></span></label>
+        <label class="option"><input class="mpa" type="checkbox" value="research"><span><b>Research / data gaps</b><br><span class="small">Keep uncertainty visible and prioritize additional tracking.</span></span></label>
+        <div class="tiny" style="margin-top:7px"><b id="mpaCount">1</b> / 4 MPA units selected</div>
+      </div>
+
+      <div class="card">
+        <strong>6. Run the scenario</strong>
+        <div class="controls" style="margin-top:7px">
+          <button class="primary" id="advance">Advance 1 year</button>
+          <button id="run">Run 10 years</button>
+          <button id="reset">Reset</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <strong>Marine spatial planning dashboard</strong>
+        <div class="kpis" style="grid-template-columns:1fr 1fr">
+          <div class="kpi">Ecological linkages<b id="links">Low</b></div>
+          <div class="kpi">Dynamic habitat protected<b id="dynamic">Low</b></div>
+          <div class="kpi">Predator support<b id="predSupport">Low</b></div>
+          <div class="kpi">Data gaps<b id="gaps">High</b></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <strong>Why did the birds change?</strong>
+        <div class="small" id="why" style="margin-top:5px">Tracking reveals different species sampling different parts of the seascape. Food, tuna/dolphin activity, fishing, bycatch, reef condition, and protection interact.</div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="footer">
+    <b>Educational model:</b> Population values are relative indices, not abundance estimates or forecasts. The species' illustrative foraging-radius values are scenario inputs—not PNG measurements. The simulation is intended to demonstrate how seabird tracking can reveal spatial linkages between terrestrial breeding colonies and dynamic pelagic ecosystems, and how those data could inform marine spatial planning and MPA design.
+  </div>
+</div>
+
+<script>
+(() => {
+  const app = document.getElementById('app');
+  const q = s => app.querySelector(s);
+  const qa = s => [...app.querySelectorAll(s)];
+  const clamp = (x,a,b) => Math.max(a,Math.min(b,x));
+
+  const S = {
+    year: 2024,
+    tracked: false,
+    surveyed: false,
+    wedge:100, redfoot:100, masked:100, noddy:100,
+    hotspots:0, coverage:0
+  };
+
+  function selectedBirds(){ return new Set(qa('.birdChoice:checked').map(x=>x.value)); }
+  function selectedMpas(){ return new Set(qa('.mpa:checked').map(x=>x.value)); }
+
+  function level(x){
+    return x >= 75 ? 'High' : x >= 48 ? 'Moderate' : 'Low';
+  }
+
+  function rand(n){
+    const x = Math.sin(n*127.17)*43758.5453;
+    return x-Math.floor(x);
+  }
+
+  function draw(){
+    const birds = selectedBirds(), m = selectedMpas();
+
+    q('#year').textContent = S.year < 2027 ? S.year+' Baseline' : S.year+' Scenario';
+    q('#wedge').textContent = Math.round(S.wedge);
+    q('#redfoot').textContent = Math.round(S.redfoot);
+    q('#masked').textContent = Math.round(S.masked);
+    q('#noddy').textContent = Math.round(S.noddy);
+
+    q('#wedgeBar').style.width = clamp(S.wedge,0,140)/140*100+'%';
+    q('#redBar').style.width = clamp(S.redfoot,0,140)/140*100+'%';
+    q('#maskedBar').style.width = clamp(S.masked,0,140)/140*100+'%';
+    q('#noddyBar').style.width = clamp(S.noddy,0,140)/140*100+'%';
+
+    q('#hotspots').textContent = S.hotspots;
+    q('#coverage').textContent = Math.round(S.coverage)+'%';
+    q('#mpaCount').textContent = m.size;
+
+    const connected =
+      m.has('colony') &&
+      (m.has('reef') || m.has('hotspot')) &&
+      (m.has('corridor') || m.has('hotspot'));
+
+    const links =
+      (m.has('colony')?22:0) +
+      (m.has('reef')?14:0) +
+      (m.has('hotspot')?20:0) +
+      (m.has('corridor')?22:0) +
+      (m.has('predator')?10:0) +
+      (connected?18:0);
+
+    const dynamic = (m.has('hotspot')?40:0)+(m.has('corridor')?30:0)+(m.has('predator')?20:0)+(S.coverage>60?10:0);
+    const predator = (m.has('predator')?55:0)+(m.has('hotspot')?15:0)+(m.has('community')?20:0);
+    const gaps = clamp(100 - S.coverage - (m.has('research')?15:0),0,100);
+
+    q('#links').textContent = level(links);
+    q('#dynamic').textContent = level(dynamic);
+    q('#predSupport').textContent = level(predator);
+    q('#gaps').textContent = gaps>60?'High':gaps>30?'Moderate':'Low';
+
+    const confidence = clamp(S.coverage*.55 + links*.3 + (m.has('research')?10:0),0,100);
+    q('#confidence').textContent = level(confidence);
+    q('#connectivity').textContent = level(links);
+
+    const colony = q('#colonyZone'), reef = q('#reefZone'), pelagic = q('#pelagicZone');
+    colony.setAttribute('fill-opacity',m.has('colony')?.31:.14);
+    reef.setAttribute('fill-opacity',m.has('reef')?.31:.14);
+    pelagic.setAttribute('fill-opacity',m.has('hotspot')?.31:.14);
+
+    const dataStory = q('#dataStory'), surveyData = q('#surveyData'), tracks = q('#tracks'), prey = q('#prey'), birdsLayer = q('#birds'), predators = q('#predators');
+    dataStory.innerHTML=''; surveyData.innerHTML=''; tracks.innerHTML=''; prey.innerHTML=''; birdsLayer.innerHTML=''; predators.innerHTML='';
+
+    // The map begins with a visible "knowledge gap" rather than silently implying that movement is known.
+    if(!S.tracked){
+      dataStory.insertAdjacentHTML('beforeend',
+        `<g opacity=".9">
+          <rect x="270" y="38" width="260" height="38" rx="9" fill="#fff" fill-opacity=".94" stroke="#87979c" stroke-width="1.5" stroke-dasharray="4 4"/>
+          <text x="400" y="60" text-anchor="middle" class="map-note" fill="#5f7177">MOVEMENT DATA: UNKNOWN</text>
+          <text x="400" y="71" text-anchor="middle" font-size="8.5" fill="#60747b">Where do the birds go offshore?</text>
+        </g>`);
+      for(let i=0;i<7;i++){
+        const x=300+rand(i*12+1)*420, y=120+rand(i*19+2)*190;
+        dataStory.insertAdjacentHTML('beforeend', `<text x="${x}" y="${y}" text-anchor="middle" font-size="18" fill="#ffffff" opacity=".45">?</text>`);
+      }
+    }else{
+      dataStory.insertAdjacentHTML('beforeend',
+        `<g>
+          <rect x="270" y="38" width="260" height="38" rx="9" fill="#fff" fill-opacity=".94" stroke="#80658e" stroke-width="1.5"/>
+          <circle cx="290" cy="57" r="6" fill="#80658e" class="pulse"/>
+          <text x="403" y="61" text-anchor="middle" class="map-note" fill="#684f79">TRACKING DATA: ${Math.round(S.coverage)}% COVERAGE</text>
+        </g>`);
+    }
+
+    if(S.surveyed){
+      const stations = [
+        [265,285,'reef'],[350,350,'reef'],[465,300,'prey'],[555,235,'prey'],[650,175,'pelagic'],[710,250,'pelagic']
+      ];
+      stations.forEach(([x,y,type],i)=>{
+        const fill=type==='reef'?'#2d9b8e':type==='prey'?'#4c9b61':'#267b91';
+        const val = type==='reef' ? ['reef health','prey'][i%2] : ['prey','surface temp','productivity'][i%3];
+        surveyData.insertAdjacentHTML('beforeend',
+          `<g class="station" data-site="${i}" tabindex="0" role="button" aria-label="Open survey station S${i+1} evidence">
+            <circle cx="${x}" cy="${y}" r="13" fill="#fff" fill-opacity=".94" stroke="${fill}" stroke-width="2.5"/>
+            <circle cx="${x}" cy="${y}" r="4" fill="${fill}" class="pulse"/>
+            <text x="${x}" y="${y+3}" text-anchor="middle" font-size="8" font-weight="800" fill="#17323a">S${i+1}</text>
+          </g>`);
+      });
+      surveyData.insertAdjacentHTML('beforeend',
+        `<g>
+          <rect x="18" y="272" width="182" height="43" rx="9" fill="#fff" fill-opacity=".95" stroke="#2d9b8e" stroke-width="1.5"/>
+          <text x="109" y="289" text-anchor="middle" class="map-note" fill="#176f6b">OCEAN SURVEY DATA</text>
+          <text x="109" y="303" text-anchor="middle" font-size="8.5" fill="#60747b">6 stations • reef • prey • water</text>
+        </g>`);
+    }
+
+    const species = [
+      ['wedge','#c58d25',750],
+      ['redfoot','#c55c55',250],
+      ['masked','#297b91',400],
+      ['noddy','#80658e',100]
+    ];
+
+    species.forEach(([key,color,range],idx)=>{
+      if(!birds.has(key)) return;
+      const endX = 205 + (range/750)*520;
+      const endY = 205 + (idx%2===0? -30:55);
+      const opacity = S.tracked ? .82 : .08;
+      const path = `M175 178 C${250+idx*25} ${145+idx*22}, ${330+idx*45} ${220-idx*10}, ${endX} ${endY}`;
+      tracks.insertAdjacentHTML('beforeend',
+        `<path d="${path}" fill="none" stroke="${color}" stroke-width="${S.tracked?3.5:1.5}" stroke-dasharray="8 7" opacity="${opacity}"/>`);
+      if(S.tracked){
+        // Tag detections along the route make the data collection process visible.
+        for(let j=0;j<5;j++){
+          const t=(j+1)/6;
+          const x=175+(endX-175)*t + Math.sin((idx+1)*j)*8;
+          const y=178+(endY-178)*t + Math.cos((idx+2)*j)*10;
+          tracks.insertAdjacentHTML('beforeend',
+            `<circle cx="${x}" cy="${y}" r="3.5" fill="${color}" stroke="#fff" stroke-width="1.5" class="pulse"/>`);
+        }
+        tracks.insertAdjacentHTML('beforeend',
+          `<circle cx="${endX}" cy="${endY}" r="8" fill="${color}" fill-opacity=".18" stroke="${color}" stroke-width="2"/>`);
+      }
+    });
+
+    const tuna = +q('#tuna').value/100;
+    const productivity = S.tracked ? (0.45 + S.hotspots*.08 + tuna*.3) : .35;
+    const fishN = Math.round(16 + productivity*28);
+
+    for(let i=0;i<fishN;i++){
+      const x=230+rand(i*4+S.year)*510, y=145+rand(i*8+S.year)*190;
+      prey.insertAdjacentHTML('beforeend',
+        `<path d="M${x} ${y}l12 -4l9 4l-9 4z" fill="#d6e8aa" opacity="${.38+productivity*.35}"/>`);
+    }
+
+    for(let i=0;i<5;i++){
+      const x=590+rand(i*9+S.year)*115, y=150+rand(i*13+S.year)*105;
+      predators.insertAdjacentHTML('beforeend',
+        `<path d="M${x-15} ${y}q15 -12 30 0q-15 12 -30 0z" fill="#17323a" opacity="${.35+tuna*.55}"/>
+         <text x="${x}" y="${y-8}" text-anchor="middle" font-size="8" fill="#17323a">tuna</text>`);
+    }
+
+    if(tuna>.55 && S.tracked){
+      for(let i=0;i<18;i++){
+        const x=575+rand(i*6+S.year)*135, y=135+rand(i*10+S.year)*135;
+        predators.insertAdjacentHTML('beforeend',
+          `<circle cx="${x}" cy="${y}" r="2.5" fill="#fff" opacity=".7"/>`);
+      }
+    }
+
+    const popAvg=(S.wedge+S.redfoot+S.masked+S.noddy)/4;
+    const n=Math.max(7,Math.round(popAvg/6));
+    for(let i=0;i<n;i++){
+      const x=60+rand(i*17+S.year)*690, y=90+rand(i*19+S.year)*175;
+      birdsLayer.insertAdjacentHTML('beforeend',
+        `<path d="M${x} ${y}q10 -9 20 0q-10 -4 -20 0" fill="none" stroke="#17323a" stroke-width="2.3" stroke-linecap="round"/>`);
+    }
+
+    q('#status').className='status '+(confidence>65?'good':'warn');
+    if(!S.tracked && !S.surveyed){
+      q('#status').textContent='2024 baseline: reef and pelagic conditions are visible, but seabird movement is a data gap. The question marks represent what we do not yet know.';
+    }else if(S.tracked && !S.surveyed){
+      q('#status').textContent=`Tracking added movement evidence: ${Math.round(S.coverage)}% coverage and ${S.hotspots} candidate hotspots. Ocean surveys can help explain what makes those places productive.`;
+    }else if(!S.tracked && S.surveyed){
+      q('#status').textContent='Ocean surveys add information about reef, prey, and water conditions—but without bird tracks, we still cannot see how seabirds connect those places.';
+    }else if(S.hotspots>=4){
+      q('#status').textContent=`Integrated evidence: ${S.hotspots} candidate hotspots now overlap tracking and ocean observations. This is the kind of evidence that can improve spatial planning.`;
+    }else{
+      q('#status').textContent='Tracking and ocean surveys are building a richer picture of the land–sea connection. More data reduce uncertainty.';
+    }
+    wireSurveyStations();
+  }
+
+  const surveySites = [
+    {name:'S1 — Nearshore reef', zone:'Reef / lagoon', observations:[['Reef condition','High live coral cover'],['Prey signal','Small schooling fish present'],['Surface temperature','27.1°C'],['Productivity','Moderate']], connection:'This site helps establish whether nearshore reef habitat provides prey close to the breeding islands. Compare it with the shorter-range Black Noddy track and the locations of other feeding activity.'},
+    {name:'S2 — Lagoon edge', zone:'Reef / lagoon', observations:[['Reef condition','Moderate coral complexity'],['Prey signal','Dense baitfish schools'],['Surface temperature','27.4°C'],['Productivity','Moderate–high']], connection:'The combination of reef structure and schooling prey may create a feeding area used by multiple species. If tracking detections cluster here, the site becomes stronger evidence of a nearshore ecological linkage.'},
+    {name:'S3 — Shelf waters', zone:'Shelf / transition', observations:[['Reef condition','Not sampled'],['Prey signal','High small-fish abundance'],['Surface temperature','26.8°C'],['Productivity','High']], connection:'This station begins to connect the coastal system with offshore foraging. Overlap with seabird tracks can reveal whether productive shelf waters are important stepping-stones between colonies and pelagic hotspots.'},
+    {name:'S4 — Offshore feeding zone', zone:'Pelagic transition', observations:[['Reef condition','Not sampled'],['Prey signal','Strong surface prey signal'],['Surface temperature','26.5°C'],['Productivity','Very high']], connection:'This is the kind of dynamic pelagic habitat that reef-only planning could miss. Compare this evidence with the long-range Wedge-tailed Shearwater, Masked Booby, and Red-footed Booby tracks.'},
+    {name:'S5 — Pelagic hotspot', zone:'Open ocean', observations:[['Reef condition','Not sampled'],['Prey signal','Very high'],['Surface temperature','26.2°C'],['Productivity','Very high']], connection:'A strong prey and productivity signal here, especially where tuna or dolphins are also detected, can help explain why seabirds travel far offshore. This is a candidate dynamic habitat for spatial planning.'},
+    {name:'S6 — Offshore predator zone', zone:'Open ocean', observations:[['Predator activity','Tuna / dolphins detected'],['Prey signal','Surface-feeding event'],['Surface temperature','26.4°C'],['Productivity','High']], connection:'Predator activity provides a mechanism that may make prey accessible to surface-feeding seabirds. If bird detections overlap this station, learners have evidence for an interaction among predators, prey, and seabirds.'}
+  ];
+
+  function showSurveySite(index){
+    if(!S.surveyed) return;
+    const site=surveySites[index];
+    if(!site) return;
+    q('#siteDetails').classList.add('show');
+    q('#siteTitle').textContent=site.name;
+    q('#siteSummary').textContent=`${site.zone}. Explore the observations collected at this conceptual survey station.`;
+    q('#siteGrid').innerHTML=site.observations.map(([k,v])=>`<div class="site-metric"><b>${k}</b><span>${v}</span></div>`).join('');
+    q('#siteConnection').innerHTML=`<b>Why it matters for movement:</b> ${site.connection}`;
+    q('#siteDetails').scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+
+  function wireSurveyStations(){
+    qa('.station').forEach(st=>{
+      const index=+st.dataset.site;
+      st.addEventListener('click',()=>showSurveySite(index));
+      st.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();showSurveySite(index);}});
+    });
+  }
+
+  function deployTracking(){
+    const birds=selectedBirds();
+    if(!birds.size){
+      q('#message').textContent='Select at least one seabird species before deploying tags.';
+      return;
+    }
+    S.tracked=true;
+    S.coverage=clamp(S.coverage+22+birds.size*8,0,100);
+    S.hotspots=clamp(Math.round(S.coverage/18)+Math.round(birds.size/2),0,8);
+    q('#message').textContent='The map now contains movement evidence: tag detections connect breeding islands to offshore waters. Notice how the four species reveal different spatial footprints. The next question is what those birds are finding there.';
+    draw();
+  }
+
+  function survey(){
+    S.surveyed=true;
+    S.coverage=clamp(S.coverage+18,0,100);
+    S.hotspots=clamp(Math.round(S.coverage/17),0,8);
+    q('#message').textContent='The map now contains ocean observations: survey stations sample reefs, prey, and offshore conditions. Compare these observations with the bird tracks—when the two datasets overlap, you have stronger evidence for an ecological hotspot.';
+    draw();
+  }
+
+  function advance(){
+    const birds=selectedBirds(), m=selectedMpas();
+    const tuna=+q('#tuna').value/100;
+    const fishing=+q('#fishing').value/100;
+    const bycatch=+q('#bycatch').value/100;
+    const reefStress=+q('#reefStress').value/100;
+
+    S.year++;
+
+    const discovery = S.tracked ? .35 + S.coverage/200 : 0;
+    const predatorBenefit = tuna*.9 - fishing*.55 + (m.has('predator')?.32:0);
+    const food = predatorBenefit + discovery*.45 - reefStress*.25 + (m.has('hotspot')?.42:0);
+    const network =
+      (m.has('colony')?.25:0) +
+      (m.has('reef')?.12:0) +
+      (m.has('hotspot')?.24:0) +
+      (m.has('corridor')?.30:0) +
+      (m.has('predator')?.18:0) +
+      (m.has('community')?.12:0);
+
+    const climate = (Math.sin(S.year*1.7)*.09) - reefStress*.25;
+    const protection = network + (m.has('research')?.06:0);
+
+    S.wedge=clamp(S.wedge + food*.52 + protection*.95 - bycatch*.95 + climate,10,150);
+    S.redfoot=clamp(S.redfoot + food*.72 + protection*1.15 - bycatch*1.18 + climate*.8,10,150);
+    S.masked=clamp(S.masked + food*.65 + protection*1.05 - bycatch*1.05 + climate*.9,10,150);
+    S.noddy=clamp(S.noddy + food*.42 + protection*.75 - bycatch*.7 + climate*.65,10,150);
+
+    if(!m.has('colony')){
+      S.wedge-=.35; S.redfoot-=.28; S.masked-=.30; S.noddy-=.22;
+    }
+
+    if(S.year===2027){
+      q('#message').textContent='2027 expedition scenario: use the newly revealed seabird tracks to reconsider MPA boundaries. The key question is whether static reef protection captures the dynamic pelagic system.';
+    }else if(m.has('hotspot') && m.has('corridor') && m.has('predator')){
+      q('#message').textContent='Your network protects both habitat and process: birds can reach feeding areas, productive pelagic hotspots are included, and predator–prey interactions are buffered. Populations still fluctuate because real ecosystems do.';
+    }else if(m.has('reef') && !m.has('hotspot')){
+      q('#message').textContent='The reef is protected, but some tracked birds travel far beyond it. Your seabird data are showing why stationary benthic habitat alone may not capture the full ecosystem.';
+    }else if(tuna<.45){
+      q('#message').textContent='Tuna/dolphin activity is low. Even with abundant small prey, fewer predator-driven surface-feeding events can reduce access to food for some seabirds.';
+    }else{
+      q('#message').textContent='The birds are responding to the combined effects of food, predator facilitation, fishing, bycatch, reef condition, and the spatial connectivity of your MPA network.';
+    }
+
+    q('#why').textContent =
+      `Year ${S.year}: tracking coverage ${Math.round(S.coverage)}%; tuna/dolphin index ${Math.round(tuna*100)}%; fishing ${Math.round(fishing*100)}%; bycatch ${Math.round(bycatch*100)}%; reef stress ${Math.round(reefStress*100)}%.`;
+
+    draw();
+  }
+
+  function reset(){
+    S.year=2024; S.tracked=false; S.surveyed=false; S.wedge=100; S.redfoot=100; S.masked=100; S.noddy=100; S.hotspots=0; S.coverage=0;
+    qa('.birdChoice').forEach(x=>x.checked=x.value==='wedge');
+    qa('.mpa').forEach(x=>x.checked=x.value==='colony');
+    q('#tuna').value=75;q('#fishing').value=35;q('#bycatch').value=15;q('#reefStress').value=20;
+    q('#siteDetails').classList.remove('show');
+    q('#message').textContent='Start with a simple question: what do we know, and what is still invisible? The map will change as you collect movement data and ocean observations, turning uncertainty into evidence you can use for marine spatial planning.';
+    q('#why').textContent='Tracking reveals different species sampling different parts of the seascape. Food, tuna/dolphin activity, fishing, bycatch, reef condition, and protection interact.';
+    updateLabels(); draw();
+  }
+
+  function updateLabels(){
+    q('#tunaVal').textContent=q('#tuna').value+'%';
+    q('#fishVal').textContent=q('#fishing').value+'%';
+    q('#bycatchVal').textContent=q('#bycatch').value+'%';
+    q('#reefVal').textContent=q('#reefStress').value+'%';
+  }
+
+  qa('.birdChoice').forEach(x=>x.addEventListener('change',draw));
+  qa('.mpa').forEach(x=>x.addEventListener('change',draw));
+  ['tuna','fishing','bycatch','reefStress'].forEach(id=>q('#'+id).addEventListener('input',()=>{updateLabels();draw()}));
+  q('#track').addEventListener('click',deployTracking);
+  q('#survey').addEventListener('click',survey);
+  q('#advance').addEventListener('click',advance);
+  q('#run').addEventListener('click',()=>{for(let i=0;i<10;i++)advance()});
+  q('#reset').addEventListener('click',reset);
+
+  updateLabels(); draw();
+})();
+</script>
+</body>
+</html>
